@@ -5,6 +5,7 @@
     ref="containerRef"
   >
     <div
+      ref="contentRef"
       class="vertical-text-content"
       :class="{ 'show-border': layout.showBorder }"
       :style="contentStyle"
@@ -49,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps({
   text: {
@@ -84,6 +85,7 @@ const props = defineProps({
 const emit = defineEmits(['selection', 'annotation-click'])
 
 const containerRef = ref(null)
+const contentRef = ref(null)
 const selectionStart = ref(null)
 const selectionEnd = ref(null)
 const selectionActive = ref(false)
@@ -217,31 +219,111 @@ function getCharStyle(char) {
   return base
 }
 
+function getCharPosFromElement(el) {
+  const charItem = el?.closest('.char-item')
+  if (!charItem) return null
+  const pos = parseInt(charItem.dataset.pos)
+  return isNaN(pos) ? null : pos
+}
+
+function getBoundaryPosFromClientPoint(clientX, clientY) {
+  const contentEl = contentRef.value
+  if (!contentEl) return null
+
+  const charsPerCol = props.layout.charsPerColumn
+  const totalChars = props.text.length
+  if (totalChars === 0) return null
+
+  const contentRect = contentEl.getBoundingClientRect()
+
+  if (clientY <= contentRect.top) {
+    if (clientX >= contentRect.right) {
+      return 0
+    }
+    if (clientX <= contentRect.left) {
+      return Math.max(0, totalChars - 1)
+    }
+  }
+
+  if (clientY >= contentRect.bottom) {
+    if (clientX >= contentRect.right) {
+      return charsPerCol - 1
+    }
+    if (clientX <= contentRect.left) {
+      return totalChars - 1
+    }
+  }
+
+  const relY = Math.min(Math.max(clientY - contentRect.top, 0), contentRect.height - 1)
+  const relX = contentRect.width - Math.min(Math.max(clientX - contentRect.left, 0), contentRect.width - 1)
+
+  const charHeight = props.layout.fontSize * props.layout.lineHeight
+  const columnWidth = props.layout.fontSize * 1.2
+  const colWithGap = columnWidth + props.layout.columnGap
+
+  const colIndexF = relX / colWithGap
+  const colIndex = Math.min(Math.max(Math.floor(colIndexF), 0), Math.ceil(totalChars / charsPerCol) - 1)
+
+  const charIndexF = relY / charHeight
+  const charIndex = Math.min(Math.max(Math.floor(charIndexF), 0), charsPerCol - 1)
+
+  let pos = colIndex * charsPerCol + charIndex
+  pos = Math.min(Math.max(pos, 0), totalChars - 1)
+
+  return pos
+}
+
+function updateSelectionEnd(clientX, clientY) {
+  const elUnderMouse = document.elementFromPoint(clientX, clientY)
+  let pos = getCharPosFromElement(elUnderMouse)
+
+  if (pos === null) {
+    pos = getBoundaryPosFromClientPoint(clientX, clientY)
+  }
+
+  if (pos !== null) {
+    selectionEnd.value = pos + 1
+  }
+}
+
 function handleMouseDown(e) {
   if (!props.editable) return
-  const target = e.target.closest('.char-item')
-  if (target) {
-    const pos = parseInt(target.dataset.pos)
-    selectionStart.value = pos
-    selectionEnd.value = pos + 1
-    isSelecting.value = true
-    selectionActive.value = true
-  }
+  const pos = getCharPosFromElement(e.target)
+  if (pos === null) return
+
+  selectionStart.value = pos
+  selectionEnd.value = pos + 1
+  isSelecting.value = true
+  selectionActive.value = true
+
+  document.addEventListener('mousemove', documentMouseMove)
+  document.addEventListener('mouseup', documentMouseUp)
 }
 
 function handleMouseMove(e) {
   if (!isSelecting.value || !props.editable) return
-  const target = document.elementFromPoint(e.clientX, e.clientY)
-  const charItem = target?.closest('.char-item')
-  if (charItem) {
-    const pos = parseInt(charItem.dataset.pos)
-    selectionEnd.value = pos + 1
-  }
+  updateSelectionEnd(e.clientX, e.clientY)
+}
+
+function documentMouseMove(e) {
+  if (!isSelecting.value) return
+  updateSelectionEnd(e.clientX, e.clientY)
 }
 
 function handleMouseUp() {
+  finishSelection()
+}
+
+function documentMouseUp() {
+  finishSelection()
+}
+
+function finishSelection() {
   if (!isSelecting.value) return
   isSelecting.value = false
+
+  document.removeEventListener('mousemove', documentMouseMove)
+  document.removeEventListener('mouseup', documentMouseUp)
 
   if (selectionStart.value !== null && selectionEnd.value !== null) {
     const start = Math.min(selectionStart.value, selectionEnd.value)
@@ -263,15 +345,23 @@ function handleMouseUp() {
 }
 
 function clearSelection() {
+  isSelecting.value = false
   selectionActive.value = false
   selectionStart.value = null
   selectionEnd.value = null
+  document.removeEventListener('mousemove', documentMouseMove)
+  document.removeEventListener('mouseup', documentMouseUp)
 }
 
 defineExpose({ clearSelection })
 
 onMounted(() => {
   nextTick(() => {})
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', documentMouseMove)
+  document.removeEventListener('mouseup', documentMouseUp)
 })
 
 watch(() => props.layout, () => {
