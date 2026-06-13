@@ -24,22 +24,51 @@ type AncientText struct {
 }
 
 type LayoutConfig struct {
-	ID           uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
-	TextID       uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex" json:"text_id"`
-	Columns      int            `gorm:"default:12" json:"columns"`
-	CharsPerColumn int          `gorm:"default:20" json:"chars_per_column"`
-	ColumnGap    int            `gorm:"default:20" json:"column_gap"`
-	FontSize     int            `gorm:"default:18" json:"font_size"`
-	FontFamily   string         `gorm:"type:varchar(255);default:'SimSun, serif'" json:"font_family"`
-	LineHeight   float64        `gorm:"default:1.8" json:"line_height"`
-	TextColor    string         `gorm:"type:varchar(20);default:'#1a1a1a'" json:"text_color"`
-	BackgroundColor string      `gorm:"type:varchar(20);default:'#f5f0e8'" json:"background_color"`
-	ShowBorder   bool           `gorm:"default:true" json:"show_border"`
-	BorderStyle  datatypes.JSON `gorm:"type:jsonb" json:"border_style"`
-	Padding      datatypes.JSON `gorm:"type:jsonb" json:"padding"`
-	CustomCSS    string         `gorm:"type:text" json:"custom_css"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	ID              uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	TextID            uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex" json:"text_id"`
+	Columns           int            `gorm:"default:12" json:"columns"`
+	CharsPerColumn    int            `gorm:"default:20" json:"chars_per_column"`
+	ColumnGap         int            `gorm:"default:20" json:"column_gap"`
+	FontSize          int            `gorm:"default:18" json:"font_size"`
+	FontFamily        string         `gorm:"type:varchar(255);default:'SimSun, serif'" json:"font_family"`
+	LineHeight        float64        `gorm:"default:1.8" json:"line_height"`
+	CharSpacing       float64        `gorm:"default:0" json:"char_spacing"`
+	TextColor         string         `gorm:"type:varchar(20);default:'#1a1a1a'" json:"text_color"`
+	BackgroundColor   string         `gorm:"type:varchar(20);default:'#f5f0e8'" json:"background_color"`
+	ShowBorder        bool           `gorm:"default:true" json:"show_border"`
+	BorderStyle       datatypes.JSON `gorm:"type:jsonb" json:"border_style"`
+	Padding           datatypes.JSON `gorm:"type:jsonb" json:"padding"`
+	CustomCSS         string         `gorm:"type:text" json:"custom_css"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+}
+
+type LayoutPreset struct {
+	ID              uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID            string         `gorm:"type:varchar(255);not null;index" json:"user_id"`
+	Name              string         `gorm:"type:varchar(255);not null" json:"name"`
+	Description       string         `gorm:"type:text" json:"description"`
+	CharsPerColumn    int            `gorm:"default:20" json:"chars_per_column"`
+	ColumnGap         int            `gorm:"default:20" json:"column_gap"`
+	FontSize          int            `gorm:"default:18" json:"font_size"`
+	FontFamily        string         `gorm:"type:varchar(255);default:'SimSun, serif'" json:"font_family"`
+	LineHeight        float64        `gorm:"default:1.8" json:"line_height"`
+	CharSpacing       float64        `gorm:"default:0" json:"char_spacing"`
+	TextColor         string         `gorm:"type:varchar(20);default:'#1a1a1a'" json:"text_color"`
+	BackgroundColor   string         `gorm:"type:varchar(20);default:'#f5f0e8'" json:"background_color"`
+	ShowBorder        bool           `gorm:"default:true" json:"show_border"`
+	IsDefault         bool           `gorm:"default:false;index" json:"is_default"`
+	CustomCSS         string         `gorm:"type:text" json:"custom_css"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (p *LayoutPreset) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
 }
 
 type Annotation struct {

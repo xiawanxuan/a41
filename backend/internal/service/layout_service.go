@@ -45,6 +45,7 @@ func (s *LayoutConfigService) GetByTextID(textID string) (*models.LayoutConfig, 
 			FontSize:        18,
 			FontFamily:      "SimSun, serif",
 			LineHeight:      1.8,
+			CharSpacing:     0,
 			TextColor:       "#1a1a1a",
 			BackgroundColor: "#f5f0e8",
 			ShowBorder:      true,
@@ -72,6 +73,7 @@ func (s *LayoutConfigService) Save(textID string, req *SaveLayoutConfigRequest) 
 		FontSize:        req.FontSize,
 		FontFamily:      req.FontFamily,
 		LineHeight:      req.LineHeight,
+		CharSpacing:     req.CharSpacing,
 		TextColor:       req.TextColor,
 		BackgroundColor: req.BackgroundColor,
 		ShowBorder:      req.ShowBorder,
@@ -109,6 +111,7 @@ type SaveLayoutConfigRequest struct {
 	FontSize        int     `json:"font_size"`
 	FontFamily      string  `json:"font_family"`
 	LineHeight      float64 `json:"line_height"`
+	CharSpacing     float64 `json:"char_spacing"`
 	TextColor       string  `json:"text_color"`
 	BackgroundColor string  `json:"background_color"`
 	ShowBorder      bool    `json:"show_border"`

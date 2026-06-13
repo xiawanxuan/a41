@@ -66,6 +66,7 @@ const props = defineProps({
       fontSize: 18,
       fontFamily: 'SimSun, serif',
       lineHeight: 1.8,
+      charSpacing: 0,
       textColor: '#1a1a1a',
       backgroundColor: '#f5f0e8',
       showBorder: true,
@@ -114,12 +115,18 @@ const contentStyle = computed(() => ({
   borderRadius: '4px'
 }))
 
-const columnStyle = computed(() => ({
-  height: props.layout.charsPerColumn * props.layout.fontSize * props.layout.lineHeight + 'px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center'
-}))
+const columnStyle = computed(() => {
+  const charHeight = props.layout.fontSize * props.layout.lineHeight
+  const charSpacing = props.layout.charSpacing || 0
+  const totalHeight = props.layout.charsPerColumn * charHeight + (props.layout.charsPerColumn - 1) * charSpacing
+  return {
+    height: totalHeight + 'px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    rowGap: charSpacing + 'px'
+  }
+})
 
 const charStyle = computed(() => ({
   width: props.layout.fontSize * 1.2 + 'px',
@@ -258,13 +265,15 @@ function getBoundaryPosFromClientPoint(clientX, clientY) {
   const relX = contentRect.width - Math.min(Math.max(clientX - contentRect.left, 0), contentRect.width - 1)
 
   const charHeight = props.layout.fontSize * props.layout.lineHeight
+  const charSpacing = props.layout.charSpacing || 0
+  const charStep = charHeight + charSpacing
   const columnWidth = props.layout.fontSize * 1.2
   const colWithGap = columnWidth + props.layout.columnGap
 
   const colIndexF = relX / colWithGap
   const colIndex = Math.min(Math.max(Math.floor(colIndexF), 0), Math.ceil(totalChars / charsPerCol) - 1)
 
-  const charIndexF = relY / charHeight
+  const charIndexF = relY / charStep
   const charIndex = Math.min(Math.max(Math.floor(charIndexF), 0), charsPerCol - 1)
 
   let pos = colIndex * charsPerCol + charIndex

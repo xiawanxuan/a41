@@ -44,6 +44,7 @@ func migrate() error {
 	return DB.AutoMigrate(
 		&models.AncientText{},
 		&models.LayoutConfig{},
+		&models.LayoutPreset{},
 		&models.Annotation{},
 	)
 }

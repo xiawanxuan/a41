@@ -69,12 +69,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTextStore } from '@/stores/text'
 import VerticalText from '@/components/VerticalText.vue'
 import AnnotationToolbar from '@/components/AnnotationToolbar.vue'
 import LayoutConfigPanel from '@/components/LayoutConfigPanel.vue'
+import { getDefaultPreset, presetToLayout } from '@/api/layoutPreset'
 
 const router = useRouter()
 const route = useRoute()
@@ -90,32 +91,51 @@ const currentSelection = reactive({
   text: ''
 })
 
-const currentLayout = ref({
+const defaultLayoutBase = {
   columns: 12,
   chars_per_column: 20,
   column_gap: 20,
   font_size: 18,
   font_family: 'SimSun, serif',
   line_height: 1.8,
+  char_spacing: 0,
   text_color: '#1a1a1a',
   background_color: '#f5f0e8',
   show_border: true,
   custom_css: ''
-})
+}
+
+const currentLayout = ref({ ...defaultLayoutBase })
 
 async function loadAll() {
   loading.value = true
   try {
     const textId = route.params.id
 
-    await Promise.all([
+    const [, layoutRes] = await Promise.allSettled([
       textStore.fetchText(textId),
       textStore.fetchLayout(textId),
       textStore.fetchAnnotations(textId, 'default-user')
     ])
 
-    if (textStore.layoutConfig) {
-      Object.assign(currentLayout.value, textStore.layoutConfig)
+    let hasTextLayout = false
+    if (layoutRes.status === 'fulfilled' && textStore.layoutConfig) {
+      Object.assign(currentLayout.value, defaultLayoutBase, textStore.layoutConfig)
+      hasTextLayout = true
+    }
+
+    if (!hasTextLayout) {
+      try {
+        const defaultPresetRes = await getDefaultPreset()
+        if (defaultPresetRes && defaultPresetRes.data) {
+          const layoutFromPreset = presetToLayout(defaultPresetRes.data)
+          if (layoutFromPreset) {
+            Object.assign(currentLayout.value, defaultLayoutBase, layoutFromPreset)
+          }
+        }
+      } catch (presetErr) {
+        console.warn('Failed to load default preset, using base defaults:', presetErr)
+      }
     }
   } catch (e) {
     console.error('Failed to load:', e)

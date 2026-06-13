@@ -17,6 +17,7 @@ func Setup() *gin.Engine {
 	textHandler := handlers.NewTextHandler()
 	annotationHandler := handlers.NewAnnotationHandler()
 	layoutHandler := handlers.NewLayoutHandler()
+	layoutPresetHandler := handlers.NewLayoutPresetHandler()
 
 	api := r.Group("/api/v1")
 	{
@@ -51,6 +52,17 @@ func Setup() *gin.Engine {
 			layouts.GET("/text/:textId", layoutHandler.GetByTextID)
 			layouts.PUT("/text/:textId", layoutHandler.Save)
 			layouts.DELETE("/:id", layoutHandler.Delete)
+		}
+
+		presets := api.Group("/layout-presets")
+		{
+			presets.POST("", layoutPresetHandler.Create)
+			presets.GET("", layoutPresetHandler.ListByUser)
+			presets.GET("/default", layoutPresetHandler.GetDefault)
+			presets.GET("/:id", layoutPresetHandler.GetByID)
+			presets.PUT("/:id", layoutPresetHandler.Update)
+			presets.PUT("/:id/default", layoutPresetHandler.SetDefault)
+			presets.DELETE("/:id", layoutPresetHandler.Delete)
 		}
 	}
 
