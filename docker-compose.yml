@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ancient-text-postgres
+    environment:
+      POSTGRES_DB: ancient_text
+      POSTGRES_USER: ancient
+      POSTGRES_PASSWORD: ancient123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ancient"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ancient-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ancient-text-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ancient-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ancient-text-backend
+    environment:
+      SERVER_PORT: 8080
+      SERVER_MODE: release
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ancient
+      DB_PASSWORD: ancient123
+      DB_NAME: ancient_text
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ALLOW_ORIGIN: http://localhost:5173
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ancient-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ancient-text-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - ancient-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ancient-network:
+    driver: bridge
